@@ -1,0 +1,33 @@
+---
+- name: Proxmox VE Disaster Recovery - Backup Phase
+  hosts: proxmox_primary
+  become: true
+  vars:
+    # Задайте имя вашей СХД Proxmox Backup Server в интерфейсе PVE
+    pbs_storage_name: "PBS"
+    local_download_path: "./backup_configs/"
+
+  tasks:
+    - name: 1. Запуск бэкапа всех виртуальных машин и контейнеров на PBS
+      ansible.builtin.command: "vzdump --all 1 --storage {{ pbs_storage_name }} --mode snapshot"
+      register: vzdump_output
+      changed_when: true
+
+    - name: Вывод лога бэкапа ВМ
+      ansible.builtin.debug:
+        var: vzdump_output.stdout_lines
+
+    - name: 2. Создание архива конфигурации самого Proxmox VE
+      community.general.archive:
+        path:
+          - /etc/pve
+          - /etc/network/interfaces
+        dest: /root/pve-settings.tar.gz
+        format: gz
+        force_archive: true
+
+    - name: 3. Скачивание архива конфигурации на локальный ПК (Ansible контроллер)
+      ansible.builtin.fetch:
+        src: /root/pve-settings.tar.gz
+        dest: "{{ local_download_path }}"
+        flat: true
