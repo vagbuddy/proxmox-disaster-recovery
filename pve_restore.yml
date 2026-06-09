@@ -1,0 +1,23 @@
+---
+- name: Proxmox VE Disaster Recovery - Restore Phase
+  hosts: proxmox_primary
+  become: true
+  vars:
+    local_config_archive: "./backup_configs/pve-settings.tar.gz"
+
+  tasks:
+    - name: 1. Копирование архива конфигурации обратно на новый сервер Proxmox
+      ansible.builtin.copy:
+        src: "{{ local_config_archive }}"
+        dest: /root/pve-settings.tar.gz
+        mode: '0600'
+
+    - name: 2. Распаковка конфигурации в корень новой системы
+      ansible.builtin.unarchive:
+        src: /root/pve-settings.tar.gz
+        dest: /
+        remote_src: true
+
+    - name: 3. Перезагрузка сервера для применения конфигурации сети и кластера
+      ansible.builtin.reboot:
+        reboot_timeout: 600
